@@ -1,151 +1,361 @@
-# Farmland Anomaly Detection via Multispectral Semantic Segmentation
+# AI-Powered Farm Anomaly Detection with Multispectral Semantic Segmentation
 
-This repository presents a deep learning-based framework for automated detection and pixel-level classification of farmland anomalies from aerial imagery. The work is designed to support precision agriculture by identifying agronomically important patterns such as weed clusters, waterlogging, nutrient deficiency, planter skips, and other field irregularities from high-resolution remote sensing data.
+A research-oriented deep learning workflow for detecting and localizing agricultural anomalies from aerial imagery using RGB and near-infrared (NIR) data.
 
-The proposed approach combines visible RGB information with near-infrared (NIR) reflectance to form a four-channel input representation and employs a semantic segmentation model to generate dense anomaly maps over agricultural fields.
+![Python](https://img.shields.io/badge/Python-3.x-blue.svg) ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange.svg) ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-## Overview
+## 1. Overview
 
-Modern agriculture increasingly relies on data-driven monitoring systems to identify field stress, crop irregularities, and management issues at scale. Manual scouting is expensive, time-consuming, and often incomplete. This project addresses that challenge by introducing an automated segmentation pipeline that transforms aerial imagery into actionable spatial maps of anomalies.
+This repository implements a semantic segmentation pipeline for farmland anomaly detection. The project addresses the need for scalable, pixel-level identification of field irregularities that are often difficult to detect through manual inspection alone.
 
-Our method is built around the following principles:
+The work is motivated by precision agriculture, where early recognition of stress patterns and structural anomalies can support targeted intervention, better crop management, and more efficient field monitoring. The current implementation focuses on multispectral fusion, class imbalance mitigation, and reproducible experimentation through notebooks.
 
-- Multispectral fusion of RGB and NIR imagery for improved scene understanding
-- Pixel-wise semantic segmentation rather than coarse image classification
-- Explicit handling of rare and visually subtle agricultural anomalies
-- Robust training strategies for class imbalance and annotation complexity
+### Why this matters
 
-## Problem Statement
+- Agricultural anomalies can directly impact yield and crop health.
+- Manual scouting is labor-intensive and incomplete at scale.
+- Pixel-level segmentation provides spatially precise localization rather than coarse classification.
 
-Agricultural fields often contain localized anomalies that are difficult to detect reliably from visual inspection alone. These anomalies may indicate:
+### Target users
 
-- Weed infestation
-- Water-related damage or poor drainage
-- Nutrient deficiency
-- Planting irregularities
-- Structural field abnormalities such as endrows and waterways
+- Researchers in remote sensing and precision agriculture
+- Machine learning practitioners building segmentation workflows
+- Agricultural analytics teams exploring field monitoring systems
 
-Accurate and early identification of such patterns is essential for targeted intervention, efficient resource allocation, and improved crop health management.
+## 2. Key Features
 
-## Dataset
+The repository implements the following capabilities:
 
-The project uses the Agriculture-Vision dataset, a large-scale aerial image collection tailored for agricultural pattern recognition. Each sample contains:
+- RGB-NIR multispectral input fusion
+- Pixel-wise semantic segmentation
+- Rare-class-aware validation splitting
+- Class-weighted sampling for imbalance handling
+- Composite loss using cross-entropy and Dice loss
+- Mixed-precision training
+- Test-time augmentation during inference
+- Checkpoint saving and prediction export
+- Qualitative prediction visualization for presentation and review
 
-- RGB imagery
-- NIR imagery
-- Boundary and validity masks
-- Multi-class annotations for agricultural anomalies
+## 3. Repository Structure
 
-The dataset is organized into training and validation splits, and the annotation schema covers multiple anomaly classes, including:
+```text
+farmland-anomaly-detection/
+├── README.md
+├── LICENSE
+├── Untitled8.ipynb
+├── deeplab-model.ipynb
+├── best.pth
+├── deep-lab.pth
+├── val_predictions.zip
+├── result1.png
+├── result2.png
+├── result3.png
+├── result4.png
+├── result5.png
+├── result6.png
+└── .gitignore
+```
 
-- Double plant
-- Drydown
-- Endrow
-- Nutrient deficiency
-- Planter skip
-- Storm damage
-- Water
-- Waterway
-- Weed cluster
+### What each item contains
 
-## Proposed Methodology
+- [README.md](README.md): Project overview, usage, and methodology.
+- [Untitled8.ipynb](Untitled8.ipynb): Main end-to-end notebook for data loading, model training, validation, and inference.
+- [deeplab-model.ipynb](deeplab-model.ipynb): Alternative DeepLab-style experiment.
+- [best.pth](best.pth): Checkpoint from the primary workflow.
+- [deep-lab.pth](deep-lab.pth): Checkpoint from the DeepLab experiment.
+- [val_predictions.zip](val_predictions.zip): Exported validation predictions.
+- [result1.png](result1.png) to [result6.png](result6.png): Qualitative segmentation outputs.
 
-### 1. Multispectral Input Representation
+## 4. System Architecture
 
-The model receives a four-channel tensor formed by concatenating:
+```mermaid
+flowchart TD
+    A[Dataset: Agriculture-Vision] --> B[Data Download & Extraction]
+    B --> C[Preprocessing & Mask Loading]
+    C --> D[Augmentation & Sampling]
+    D --> E[Multispectral 4-Channel Input]
+    E --> F[Segmentation Model]
+    F --> G[Training with CE + Dice Loss]
+    G --> H[Validation with mIoU & Confusion Matrix]
+    H --> I[Checkpointing]
+    I --> J[Inference with Test-Time Augmentation]
+    J --> K[Prediction Masks & Visualization]
+```
 
-- Red, Green, and Blue channels from RGB imagery
-- A grayscale NIR channel
+## 5. Dataset
 
-This multispectral representation improves discrimination between vegetation stress, moisture, and background conditions that are often ambiguous in RGB-only analysis.
+The repository uses the Agriculture-Vision dataset from Hugging Face.
 
-### 2. Semantic Segmentation Architecture
+| Property | Details |
+| --- | --- |
+| Dataset name | Agriculture-Vision (2021) |
+| Source | Hugging Face dataset repository: shi-labs/Agriculture-Vision |
+| Annotation type | Multi-class segmentation masks |
+| Modalities | RGB imagery and NIR imagery |
+| Classes used in the notebooks | background, double_plant, drydown, endrow, nutrient_deficiency, planter_skip, storm_damage, water, waterway, weed_cluster |
+| Split strategy | Stratified split with rare-class examples forced into validation |
+| Training subset used in notebook | 20,000 training files sampled from the available set |
+| Validation strategy | Approximately 10% of the sampled set, plus rare-class images preserved for validation |
+| Label format | Per-class PNG masks with validity and boundary masks |
+| Resolution | Dynamically cropped or centered during preprocessing; no fixed resolution is hard-coded in the repository |
 
-A U-Net-style segmentation network with an EfficientNet-B3 encoder is used as the backbone. The encoder is initialized with pretrained ImageNet weights, and the first convolutional layer is adapted from three input channels to four to accommodate the RGB-NIR input tensor.
+> The repository does not bundle the full dataset locally; it downloads the data at runtime from the Hugging Face source.
 
-This architecture is well suited to dense prediction tasks because it combines:
+## 6. Data Preprocessing
 
-- Hierarchical feature extraction
-- Multi-scale contextual information
-- High-resolution spatial reconstruction through decoder pathways
+The notebooks implement the following preprocessing and augmentation pipeline:
 
-### 3. Training Strategy
+- Downloading and extracting the Agriculture-Vision archive
+- Selecting train and validation directories
+- Loading RGB and NIR images
+- Constructing a four-channel tensor from RGB + grayscale NIR
+- Loading boundary and validity masks
+- Building a multi-class label representation from per-class PNG masks
+- Applying random crop, horizontal/vertical flip, rotation, and scale/shift transformations
+- Applying brightness/contrast adjustment and Gaussian noise
+- Normalizing image tensors into the range $[0, 1]$
+- Converting images and masks to PyTorch tensors for training
 
-Several design choices are incorporated to improve learning quality and generalization:
+## 7. Model Architecture
 
-- Randomized augmentations, including crop, flip, rotation, brightness adjustment, and noise injection
-- Stratified validation splitting with rare-class samples explicitly preserved in validation
-- Class-weighted sampling to mitigate imbalance across anomaly categories
-- A composite loss function combining cross-entropy and Dice loss to optimize both pixel-wise correctness and region-level overlap
-- Mixed-precision training for computational efficiency
+The repository contains two segmentation experiments:
 
-### 4. Evaluation and Inference
+### Primary model
 
-Model performance is assessed using a confusion-matrix-based evaluation pipeline and mean Intersection over Union (mIoU). During inference, test-time augmentation is applied to improve prediction stability, and output masks are saved as segmentation maps for downstream analysis.
+- Architecture: U-Net
+- Encoder: EfficientNet-B3
+- Pretrained weights: ImageNet
+- Input channels: 4 (RGB + NIR)
+- Output classes: 10 including background
 
-## Technical Highlights
+The first convolutional layer is adapted from three input channels to four to support multispectral input.
 
-- End-to-end training pipeline for semantic segmentation of agricultural anomalies
-- Support for RGB-NIR multimodal fusion
-- Explicit treatment of rare anomaly categories
-- Validation-ready checkpointing and prediction export
-- Reproducible experiment workflow implemented in the notebook
+### Alternative experiment
 
-## Repository Contents
+- Architecture: DeepLabV3+
+- Encoder: ResNet-50
+- Pretrained weights: ImageNet
+- Input channels: 4
+- Output classes: 10 including background
 
-- [Untitled8.ipynb](Untitled8.ipynb): End-to-end experiment notebook containing data preparation, dataset construction, training, validation, and inference
-- [best.pth](best.pth): Trained model checkpoint
-- [val_predictions.zip](val_predictions.zip): Validation predictions exported in compressed form
-- [result1.png](result1.png), [result2.png](result2.png), [result3.png](result3.png): Representative qualitative segmentation outputs
+```mermaid
+flowchart LR
+    X[4-Channel Input] --> E[Encoder]
+    E --> D[Decoder]
+    D --> C[Classifier / Pixel Head]
+    C --> Y[Segmentation Map]
+```
 
-## Representative Results
+## 8. Training Pipeline
 
-The following examples illustrate the qualitative performance of the proposed approach on representative agricultural scenes.
+The training workflow is implemented in the notebooks and includes:
 
-![Representative segmentation output 1](result1.png)
+- Optimizer: AdamW
+- Learning rate: $1 \times 10^{-4}$
+- Weight decay: $1 \times 10^{-5}$
+- Scheduler: Cosine annealing
+- Epochs: 12
+- Train batch size: 32
+- Validation batch size: 4
+- Loss: combined cross-entropy and Dice loss
+- Mixed precision: enabled with PyTorch AMP and GradScaler
+- Checkpointing: saved during training
+- Validation: performed every two epochs
 
-![Representative segmentation output 2](result2.png)
+## 9. Hyperparameters
 
-![Representative segmentation output 3](result3.png)
+| Hyperparameter | Value |
+| --- | ---: |
+| Epochs | 12 |
+| Learning rate | $1 \times 10^{-4}$ |
+| Weight decay | $1 \times 10^{-5}$ |
+| Train batch size | 32 |
+| Validation batch size | 4 |
+| Sampling strategy | Weighted random sampling |
+| Rare-class validation handling | Forced inclusion of rare examples |
+| Mixed precision | Enabled |
+| Test-time augmentation | Enabled |
 
-## Getting Started
+## 10. Evaluation Metrics
 
-### Environment Setup
+The repository implements evaluation using:
 
-Install the required dependencies:
+- Confusion matrix
+- Mean Intersection over Union (mIoU)
+- Per-class IoU
+- Cross-entropy loss
+- Dice loss
+
+No quantitative metric log files or report tables are included in the repository snapshot.
+
+## 11. Experimental Results
+
+The repository includes qualitative outputs and exported predictions, but it does not include saved numeric training logs or benchmark tables.
+
+| Artifact | Availability | Notes |
+| --- | --- | --- |
+| Qualitative prediction images | Present | Six PNG outputs are included |
+| Validation prediction archive | Present | [val_predictions.zip](val_predictions.zip) |
+| Model checkpoints | Present | [best.pth](best.pth) and [deep-lab.pth](deep-lab.pth) |
+| Training curves | Not available in repository | No TensorBoard or CSV logs were found |
+| Numerical metrics | Not available in repository | mIoU and confusion-matrix logic are implemented, but no saved scores are bundled |
+
+## 12. Sample Predictions
+
+The repository already contains several visualization outputs that demonstrate the segmentation workflow.
+
+![Prediction sample 1](result1.png)
+
+![Prediction sample 2](result2.png)
+
+![Prediction sample 3](result3.png)
+
+![Prediction sample 4](result4.png)
+
+![Prediction sample 5](result5.png)
+
+![Prediction sample 6](result6.png)
+
+## 13. Performance Comparison
+
+The repository contains two model variants implemented in the notebooks:
+
+| Model variant | Backbone | Input | Notes |
+| --- | --- | --- | --- |
+| Main workflow | U-Net + EfficientNet-B3 | 4-channel RGB+NIR | Primary experiment in [Untitled8.ipynb](Untitled8.ipynb) |
+| DeepLab experiment | DeepLabV3+ + ResNet-50 | 4-channel RGB+NIR | Alternative experiment in [deeplab-model.ipynb](deeplab-model.ipynb) |
+
+No numerical comparison metrics are included in the repository snapshot.
+
+## 14. Installation
 
 ```bash
+git clone https://github.com/kaws26/farmland-anomaly-detection.git
+cd farmland-anomaly-detection
+python -m venv .venv
+source .venv/bin/activate
 pip install -q huggingface_hub segmentation-models-pytorch albumentations tqdm
 ```
 
-### Dataset Preparation
+## 15. Usage
 
-The notebook downloads the Agriculture-Vision dataset directly from Hugging Face Hub and prepares the train and validation directories for training.
+The project is notebook-driven. Open either notebook and run the cells in order.
 
-### Training
+### Main workflow
 
-Run the training cells in [Untitled8.ipynb](Untitled8.ipynb) to:
+- Open [Untitled8.ipynb](Untitled8.ipynb)
+- Run the cells for dataset download, preprocessing, model setup, training, validation, and inference
 
-1. Build the dataset loaders
-2. Train the segmentation model
-3. Evaluate on validation data
-4. Save the best checkpoint
+### DeepLab experiment
 
-### Inference
+- Open [deeplab-model.ipynb](deeplab-model.ipynb)
+- Run the cells to reproduce the alternative architecture experiment
 
-The notebook also includes inference routines for generating segmentation masks and exporting predictions as compressed archives.
+## 16. Configuration
 
-## Notes for Reproducibility
+The notebooks define the main configuration values directly in code, including:
 
-- The implementation is designed to be executed in a GPU-enabled environment for efficient training.
-- The current repository includes a trained checkpoint and exported validation predictions for immediate inspection.
-- The workflow is modular and can be extended to additional anomaly classes or larger-scale deployment scenarios.
+- Class names in the `CLASSES` list
+- Number of output classes in `NUM_CLASSES`
+- Dataset roots such as `TRAIN_DIR` and `VAL_DIR`
+- Batch size and checkpoint directory
+- Training and validation transforms
 
-## Acknowledgements
+These values are intentionally embedded in the notebook workflow rather than stored in a separate YAML or JSON configuration file.
 
-This work draws on the Agriculture-Vision benchmark and related open-source deep learning libraries for segmentation and data augmentation. The project is intended as a contribution toward scalable, machine-learning-driven precision agriculture.
+## 17. Research Contributions
 
-## Summary
+This repository contributes the following elements to the problem of agricultural anomaly segmentation:
 
-This repository demonstrates a practical and research-oriented solution for farmland anomaly detection using multispectral semantic segmentation. By combining RGB and NIR data with modern deep learning architectures, the system provides a strong foundation for automated agricultural monitoring and decision support in real-world farming applications.
+- A multispectral segmentation setup that combines RGB and NIR modalities
+- A practical rare-class handling strategy through validation preservation and weighted sampling
+- A composite loss formulation designed to improve region overlap and pixel-level correctness
+- A reproducible notebook-based experimental workflow for research and education
+- An exportable inference pipeline for generating segmentation masks
+
+## 18. Limitations
+
+The current repository has several practical limitations:
+
+- The workflow is notebook-centric rather than packaged as a standalone CLI application
+- The repository does not include full training logs or published quantitative benchmark tables
+- The dataset is downloaded at runtime and is not bundled locally
+- The current implementation focuses on experimentation and demonstration rather than deployment integration
+
+## 19. Future Work
+
+Potential next steps include:
+
+- Packaging the workflow into reusable training and inference scripts
+- Adding configuration files for reproducible experiments
+- Logging metrics to CSV or TensorBoard
+- Expanding evaluation with precision, recall, F1, and Dice scores
+- Integrating explainability methods such as Grad-CAM or attention visualization
+- Extending the pipeline to deployment-oriented inference APIs or web-based dashboards
+
+## 20. Technology Stack
+
+- Python
+- PyTorch
+- segmentation-models-pytorch
+- Albumentations
+- OpenCV
+- NumPy
+- Pandas
+- Pillow
+- Hugging Face Hub
+- Jupyter Notebook
+
+## 21. Dependencies
+
+| Dependency | Purpose |
+| --- | --- |
+| torch | Model training and inference |
+| segmentation-models-pytorch | U-Net and DeepLab-style segmentation architectures |
+| albumentations | Data augmentation |
+| huggingface_hub | Dataset download from Hugging Face |
+| tqdm | Progress bars |
+| numpy | Array manipulation and mask processing |
+| pandas | Lightweight data handling in notebooks |
+| pillow | Image loading and saving |
+| opencv-python | Image-processing utilities |
+
+## 22. Reproducibility
+
+To reproduce the workflow:
+
+1. Install the dependencies listed above.
+2. Open [Untitled8.ipynb](Untitled8.ipynb) or [deeplab-model.ipynb](deeplab-model.ipynb).
+3. Run the cells in order.
+4. Use the same random seed values provided in the notebooks for the split and sampling logic.
+5. Inspect the generated checkpoints and exported predictions.
+
+## 23. Citation
+
+```bibtex
+@misc{farmland_anomaly_detection_2026,
+  title={AI-Powered Farm Anomaly Detection with Multispectral Semantic Segmentation},
+  author={Kawaljeet Singh},
+  year={2026},
+  howpublished={\url{https://github.com/kaws26/farmland-anomaly-detection}}
+}
+```
+
+## 24. License
+
+This project is distributed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## 25. Acknowledgements
+
+This project builds on the following open resources:
+
+- Agriculture-Vision benchmark dataset
+- Hugging Face Hub dataset hosting
+- PyTorch and segmentation-models-pytorch
+- Albumentations for augmentation
+- The broader open-source computer vision and remote sensing community
+
+## 26. Contact
+
+For questions, collaboration, or feedback, please open an issue on the GitHub repository.
 
